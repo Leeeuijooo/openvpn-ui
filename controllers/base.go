@@ -1,3 +1,5 @@
+// controllers/base.go
+
 package controllers
 
 import (
@@ -31,17 +33,16 @@ func (c *BaseController) Prepare() {
 	c.Data["IsLogin"] = c.IsLogin
 	c.Data["Userinfo"] = c.Userinfo
 
-	//c.Data["HeadStyles"] = []string{}
-	//c.Data["HeadScripts"] = []string{}
-
-	//c.Layout = "base.tpl"
-	//c.LayoutSections = make(map[string]string)
-	//c.LayoutSections["BaseHeader"] = "header.tpl"
-	//c.LayoutSections["BaseFooter"] = "footer.tpl"
-
 	if app, ok := c.AppController.(NestPreparer); ok {
 		app.NestPrepare()
 	}
+}
+
+func (c *BaseController) GetLoginUser() *models.User {
+	if c.IsLogin {
+		return c.Userinfo
+	}
+	return nil
 }
 
 func (c *BaseController) Finish() {
@@ -72,8 +73,6 @@ func (c *BaseController) SetParams() {
 	c.Data["Params"] = make(map[string]string)
 	input, err := c.Input()
 	if err != nil {
-		// handle the error
-		// log.Println("Error getting input:", err)
 		return
 	}
 	for k, v := range input {

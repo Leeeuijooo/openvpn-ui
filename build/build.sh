@@ -64,7 +64,8 @@ cp -f ../$QRFILE ./
 cp -f ../$UIFILE ./
 
 # Build openvpn-ui image
-docker build -t local/openvpn-ui .
+docker build -t login-ui/openvpn-ui .
+docker image rm ui-test/openvpn-ui
 rm -f $UIFILE; rm -f $(basename $UIFILE); #rm -f $QRFILE; 
 printf "\033[1;34mAll done.\033[0m\n"
 

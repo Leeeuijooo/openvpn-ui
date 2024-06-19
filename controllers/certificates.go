@@ -1,3 +1,5 @@
+// controllers/certificates.go
+
 package controllers
 
 import (
@@ -89,8 +91,6 @@ func (c *CertificatesController) DisplayImage() {
 	imageName := c.Ctx.Input.Param(":imageName")
 	logs.Info("Image name: %s", imageName)
 	imagePath := filepath.Join(state.GlobalCfg.OVConfigPath, "clients/", imageName+".png")
-	// destPath := filepath.Join(state.GlobalCfg.OVConfigPath, "clients", name+".ovpn")
-	//imagePath := "./openvpn/clients/" + imageName + ".png"
 	logs.Info("Image path: %s", imagePath)
 
 	// Check if the image file exists
@@ -115,8 +115,27 @@ func (c *CertificatesController) showCerts() {
 	if err != nil {
 		logs.Error(err)
 	}
-	lib.Dump(certs)
-	c.Data["certificates"] = &certs
+	// 현재 로그인한 사용자 정보 가져오기
+	loginUser := c.GetLoginUser()
+	if loginUser == nil {
+		c.Data["certificates"] = &certs
+		return
+	}
+
+	// Admin 권한이 있는 경우 모든 인증서 표시 조건
+	if loginUser.IsAdmin {
+		c.Data["certificates"] = &certs
+	} else {
+		// Admin 권한이 없는 경우 현재 로그인 한 사용자와 일치하는 인증서만 남깁니다.
+		filteredCerts := make([]*lib.Cert, 0)
+		for _, cert := range certs {
+			if cert.Details.Name == loginUser.Login {
+				filteredCerts = append(filteredCerts, cert)
+			}
+		}
+		c.Data["certificates"] = &filteredCerts
+	}	
+	
 	cfg := models.EasyRSAConfig{Profile: "default"}
 	_ = cfg.Read("Profile")
 	c.Data["EasyRSA"] = &cfg
@@ -166,8 +185,6 @@ func (c *CertificatesController) Revoke() {
 	tfaname := c.GetString(":tfaname")
 	if err := lib.RevokeCertificate(name, serial, tfaname); err != nil {
 		logs.Error(err)
-		//flash.Error(err.Error())
-		//flash.Store(&c.Controller)
 	} else {
 		flash.Success("Success! Certificate for the name \"" + name + "\" and serial  \"" + serial + "\" has been revoked")
 		flash.Store(&c.Controller)
@@ -179,7 +196,6 @@ func (c *CertificatesController) Revoke() {
 func (c *CertificatesController) Restart() {
 	lib.Restart()
 	c.Redirect(c.URLFor("CertificatesController.Get"), 302)
-	// return
 }
 
 // @router /certificates/burn/:key/:serial/:tfaname [get]
@@ -192,8 +208,6 @@ func (c *CertificatesController) Burn() {
 	logs.Info("Controller: Burning certificate with parameters: CN=%s, serial=%s, tfaname=%s", CN, serial, tfaname)
 	if err := lib.BurnCertificate(CN, serial, tfaname); err != nil {
 		logs.Error(err)
-		//flash.Error(err.Error())
-		//flash.Store(&c.Controller)
 	} else {
 		flash.Success("Success! Certificate for the name \"" + CN + "\" and serial  \"" + serial + "\"  has been removed")
 		flash.Store(&c.Controller)
@@ -211,8 +225,6 @@ func (c *CertificatesController) Renew() {
 	tfaname := c.GetString(":tfaname")
 	if err := lib.RenewCertificate(name, localip, serial, tfaname); err != nil {
 		logs.Error(err)
-		//flash.Error(err.Error())
-		//flash.Store(&c.Controller)
 	} else {
 		flash.Success("Success! Certificate for the name \"" + name + "\"  and IP \"" + localip + "\" and Serial \"" + serial + "\" has been renewed")
 		flash.Store(&c.Controller)
@@ -251,7 +263,6 @@ func (c *CertificatesController) saveClientConfig(keysPath string, name string) 
 	cfg.PersistKey = ovClientConfig.PersistKey
 	cfg.RemoteCertTLS = ovClientConfig.RemoteCertTLS
 	cfg.RedirectGateway = ovClientConfig.RedirectGateway
-	// cfg.Proto = ovClientConfig.Proto // this will be set from server config
 	cfg.Device = ovClientConfig.Device
 	cfg.AuthNoCache = ovClientConfig.AuthNoCache
 	cfg.TlsClient = ovClientConfig.TlsClient
